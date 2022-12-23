@@ -8,10 +8,12 @@ from collections import Counter
 def intersection_over_union(boxes_preds, boxes_labels, box_format="midpoint"):
     """
     Calculates intersection over union
+
     Parameters:
         boxes_preds (tensor): Predictions of Bounding Boxes (BATCH_SIZE, 4)
         boxes_labels (tensor): Correct labels of Bounding Boxes (BATCH_SIZE, 4)
         box_format (str): midpoint/corners, if boxes (x,y,w,h) or (x1,y1,x2,y2)
+
     Returns:
         tensor: Intersection over union for all examples
     """
@@ -53,12 +55,14 @@ def intersection_over_union(boxes_preds, boxes_labels, box_format="midpoint"):
 def non_max_suppression(bboxes, iou_threshold, threshold, box_format="corners"):
     """
     Does Non Max Suppression given bboxes
+
     Parameters:
         bboxes (list): list of lists containing all bboxes with each bboxes
         specified as [class_pred, prob_score, x1, y1, x2, y2]
         iou_threshold (float): threshold where predicted bboxes is correct
         threshold (float): threshold to remove predicted bboxes (independent of IoU)
         box_format (str): "midpoint" or "corners" used to specify bboxes
+
     Returns:
         list: bboxes after performing NMS given a specific IoU threshold
     """
@@ -94,6 +98,7 @@ def mean_average_precision(
 ):
     """
     Calculates mean average precision
+
     Parameters:
         pred_boxes (list): list of lists containing all bboxes with each bboxes
         specified as [train_idx, class_prediction, prob_score, x1, y1, x2, y2]
@@ -101,6 +106,7 @@ def mean_average_precision(
         iou_threshold (float): threshold where predicted bboxes is correct
         box_format (str): "midpoint" or "corners" used to specify bboxes
         num_classes (int): number of classes
+
     Returns:
         float: mAP value across all classes given a specific IoU threshold
     """
@@ -281,7 +287,7 @@ def get_bboxes(
     return all_pred_boxes, all_true_boxes
 
 
-def convert_cellboxes(predictions, s=7):
+def convert_cellboxes(predictions, S=7):
     """
     Converts bounding boxes output from Yolo with
     an image split size of S into entire image ratios
@@ -303,9 +309,9 @@ def convert_cellboxes(predictions, s=7):
     best_box = scores.argmax(0).unsqueeze(-1)
     best_boxes = bboxes1 * (1 - best_box) + best_box * bboxes2
     cell_indices = torch.arange(7).repeat(batch_size, 7, 1).unsqueeze(-1)
-    x = 1 / s * (best_boxes[..., :1] + cell_indices)
-    y = 1 / s * (best_boxes[..., 1:2] + cell_indices.permute(0, 2, 1, 3))
-    w_y = 1 / s * best_boxes[..., 2:4]
+    x = 1 / S * (best_boxes[..., :1] + cell_indices)
+    y = 1 / S * (best_boxes[..., 1:2] + cell_indices.permute(0, 2, 1, 3))
+    w_y = 1 / S * best_boxes[..., 2:4]
     converted_bboxes = torch.cat((x, y, w_y), dim=-1)
     predicted_class = predictions[..., :20].argmax(-1).unsqueeze(-1)
     best_confidence = torch.max(predictions[..., 20], predictions[..., 25]).unsqueeze(
@@ -318,15 +324,15 @@ def convert_cellboxes(predictions, s=7):
     return converted_preds
 
 
-def cellboxes_to_boxes(out, s=7):
-    converted_pred = convert_cellboxes(out).reshape(out.shape[0], s * s, -1)
+def cellboxes_to_boxes(out, S=7):
+    converted_pred = convert_cellboxes(out).reshape(out.shape[0], S * S, -1)
     converted_pred[..., 0] = converted_pred[..., 0].long()
     all_bboxes = []
 
     for ex_idx in range(out.shape[0]):
         bboxes = []
 
-        for bbox_idx in range(s * s):
+        for bbox_idx in range(S * S):
             bboxes.append([x.item() for x in converted_pred[ex_idx, bbox_idx, :]])
         all_bboxes.append(bboxes)
 

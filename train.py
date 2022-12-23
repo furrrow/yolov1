@@ -11,13 +11,13 @@ from utils import cellboxes_to_boxes, get_bboxes, plot_image, save_checkpoint, l
 from loss import YoloLoss
 import numpy as np
 
-seed = 42
-torch.manual_seed(seed)
+# seed = 42
+# torch.manual_seed(seed)
 
 # user tuned parameters
 LEARNING_RATE = 2e-5
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-BATCH_SIZE = 64
+BATCH_SIZE = 16  # 64
 WEIGHT_DECAY = 0  # this is artificially zero due to computational restrictions
 EPOCHS = 100
 NUM_WORKERS = 0
@@ -57,7 +57,8 @@ def train_fn(train_loader, model, optimizer, loss_fn):
 
         # progress bar
         loop.set_postfix(loss=loss.item())
-    print(f"Mean loss: {np.mean(mean_loss):.3f}")
+    # print(f"Mean loss: {np.mean(mean_loss):.3f}")
+    print(f"Mean loss was {sum(mean_loss)/len(mean_loss)}")
 
 
 def main():
@@ -67,18 +68,18 @@ def main():
     if LOAD_MODEL:
         load_checkpoint(torch.load(LOAD_MODEL_FILE), model, optimizer)
 
-    train_dataset = VOCDataset("data/8examples.csv", IMG_DIR, LABEL_DIR, transform=transform)
+    train_dataset = VOCDataset("data/8examples.csv", img_dir=IMG_DIR, label_dir=LABEL_DIR, transform=transform)
     # train_dataset = VOCDataset("data/100examples.csv",IMG_DIR, LABEL_DIR, transform=transform)
     # train_dataset = VOCDataset("data/train.csv",IMG_DIR, LABEL_DIR), transform=transform)
     test_dataset = VOCDataset("data/test.csv", IMG_DIR, LABEL_DIR, transform=transform)
-    train_loader = DataLoader(train_dataset, BATCH_SIZE, shuffle=True,
+    train_loader = DataLoader(dataset=train_dataset, batch_size=BATCH_SIZE, shuffle=True,
                               num_workers=NUM_WORKERS, pin_memory=PIN_MEMORY, drop_last=False)
     test_loader = DataLoader(test_dataset, BATCH_SIZE, shuffle=True,
                              num_workers=NUM_WORKERS, pin_memory=PIN_MEMORY, drop_last=True)
     for epoch in range(EPOCHS):
         pred_boxes, target_boxes = get_bboxes(train_loader, model, iou_threshold=0.5, threshold=0.4)
         mean_avg_prec = mean_average_precision(pred_boxes, target_boxes, iou_threshold=0.5, box_format="midpoint")
-        print(f"Train mAP: {mean_avg_prec:.3f}")
+        print(f"Train mAP: {mean_avg_prec}")
         if mean_avg_prec > 0.9:
             checkpoint = {
                 "state_dict": model.state_dict(),
